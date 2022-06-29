@@ -27,10 +27,14 @@ const black = vec4(0.0, 0.0, 0.0, 1.0);
 const red = vec4(1.0, 0.0, 0.0, 1.0);
 
 const at = vec3(0.0, 0.0, 0.0);
-const up = vec3(0.0, 1.0, 0.0);
+var up = vec3(0.0, 1.0, 0.0);
 
 var modelViewMatrix, projectionMatrix;
 var modelViewMatrixLoc, projectionMatrixLoc;
+
+var phi = 0.0;       // vertical angle of rotation
+var fovy = 37;       // frame of view angle for perspective view
+var isOrtho = true;  // flag to indicate current projection type
 
 window.onload = function init() {
     var canvas = document.getElementById("gl-canvas");
@@ -96,6 +100,40 @@ window.onload = function init() {
     modelViewMatrixLoc = gl.getUniformLocation(program, "modelViewMatrix");
     projectionMatrixLoc = gl.getUniformLocation(program, "projectionMatrix");
 
+    document.getElementById("lRotate").onclick =
+        function () {
+            theta -= .1;
+        };
+
+    document.getElementById("rRotate").onclick =
+        function () {
+            theta += .1;
+        };
+
+    document.getElementById("dRotate").onclick =
+        function () {
+            phi -= .1;
+        };
+
+    document.getElementById("uRotate").onclick =
+        function () {
+            phi += .1;
+        };
+
+    document.getElementById("oView").onclick =
+        function () {
+            isOrtho = true;
+            projectionMatrix = perspective(left, right, bottom, ytop, near, far);
+            gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+        };
+
+    document.getElementById("pView").onclick =
+        function () {
+            isOrtho = false;
+            projectionMatrix = perspective(fovy, 1.0, near, far);
+            gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+        };
+
     render();
 }
 
@@ -103,12 +141,31 @@ window.onload = function init() {
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    var eye = vec3(radius * Math.cos(theta),
-        0.0,
-        radius * Math.sin(theta));
+    if (theta > 2 * Math.PI)
+        theta -= 2 * Math.PI;
+    if (theta < 0)
+        theta += 2 * Math.PI;
+
+    if (phi > 2 * Math.PI)
+        phi -= 2 * Math.PI;
+    if (phi < 0)
+        phi += 2 * Math.PI;
+
+    if (phi >= Math.PI / 2 && phi < 3 * Math.PI / 2)
+        vec3(0.0, -1.0, 0.0);
+    else
+        vec3(0.0, 1.0, 0.0);
+
+    var eye = vec3(radius * Math.cos(theta) * Math.cos(phi),
+        radius * Math.sin(phi),
+        radius * Math.sin(theta) * Math.cos(phi));
 
     modelViewMatrix = lookAt(eye, at, up);
-    projectionMatrix = ortho(left, right, bottom, ytop, near, far);
+
+    if (isOrtho)
+        projectionMatrix = ortho(left, right, bottom, ytop, near, far);
+    else if (!isOrtho)
+        projectionMatrix = perspective(fovy, 1.0, near, far);
 
     gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
     gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
